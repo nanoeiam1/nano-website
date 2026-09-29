@@ -94,7 +94,6 @@ button{font:inherit;color:inherit}
 .panel--d2{background:#0a1c2e}
 .panel--d3{background:#0b1730;--rule:rgba(150,170,245,.16)}
 .panel--d4{background:#090f24;--rule:rgba(160,165,250,.15)}
-.panel::after,.footer::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:repeating-linear-gradient(180deg,rgba(220,234,241,.055) 0 1px,transparent 1px 3px),repeating-linear-gradient(180deg,rgba(4,10,16,.16) 0 1px,transparent 1px 6px)}
 .wrap{max-width:96rem;margin:0 auto;position:relative;z-index:1}
 
 /* ---------------- labels and headings ---------------- */
@@ -275,7 +274,6 @@ main.fade{opacity:0}
   .pill{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(8,18,28,.86)}
   .pill--on{background:var(--ink)}
   .pill--accent{background:var(--accent)}
-  .panel::after,.footer::after{background:repeating-linear-gradient(180deg,rgba(220,234,241,.05) 0 1px,transparent 1px 3px)}
 }
 @media (prefers-reduced-motion: reduce){
   html{scroll-behavior:auto}
@@ -787,7 +785,6 @@ main.fade{opacity:0}
     <span>Nano Eiamwattanasin, mechanical engineering</span>
     <span>Northeastern University, Boston</span>
   </div>
-  <div class="footer-word" aria-hidden="true">nano</div>
 </footer>
 
 <script>
@@ -823,13 +820,13 @@ main.fade{opacity:0}
     } catch (e) { urls[kind] = 'data:' + type + ';base64,' + b64; }
     return urls[kind];
   }
-  var seen = new WeakMap();
-  function onScreen(v){ return seen.get(v) !== false && !v.closest('[hidden]'); }
+  // plays the whole time the page is open, including while scrolling past it;
+  // it only stops when you're on another page of the site or the tab is in the background
+  function onScreen(v){ return !v.closest('[hidden]'); }
   var watcher = ('IntersectionObserver' in window) ? new IntersectionObserver(function(entries){
     entries.forEach(function(e){
-      seen.set(e.target, e.isIntersecting);
-      if (e.isIntersecting && !still && !e.target.closest('[hidden]')) e.target.play().catch(function(){});
-      else e.target.pause();
+      // some browsers pause muted video that scrolls away; this picks it straight back up
+      if (e.isIntersecting && !still && e.target.paused && onScreen(e.target)) e.target.play().catch(function(){});
     });
   }, { threshold: 0 }) : null;
   function setupVideos(el){
@@ -847,6 +844,7 @@ main.fade{opacity:0}
       v.muted = true;
       v.autoplay = !still;
       v.src = blobUrl(order[0]);
+      if (!still && onScreen(v)) v.play().catch(function(){});
       if (watcher) watcher.observe(v);
     });
   }
@@ -923,6 +921,7 @@ main.fade{opacity:0}
     });
     hydrate(view);
     setupVideos(view);
+    if (!still) view.querySelectorAll('video[data-ready]').forEach(function(x){ x.play().catch(function(){}); });
     document.title = view.dataset.title;
     current = name;
     if (name !== 'home') setPill(path.split('/')[0]);
